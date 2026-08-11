@@ -318,19 +318,19 @@ namespace Antmicro.Renode.Peripherals.IRQControllers
                 break;
             case Registers.SystemHandlerPriority1:
                 // 7th interrupt is ignored
-                priorities[(int)(isSecure ? SystemException.MemManageFault_S : SystemException.MemManageFault)] = (byte)value;
-                priorities[(int)SystemException.BusFault] = (byte)(value >> 8);
-                priorities[(int)(isSecure ? SystemException.UsageFault_S : SystemException.UsageFault)] = (byte)(value >> 16);
+                SetSystemHandlerPriority(isSecure ? SystemException.MemManageFault_S : SystemException.MemManageFault, (byte)value);
+                SetSystemHandlerPriority(SystemException.BusFault, (byte)(value >> 8));
+                SetSystemHandlerPriority(isSecure ? SystemException.UsageFault_S : SystemException.UsageFault, (byte)(value >> 16));
                 this.DebugLog("Priority of IRQs 4, 5, 6 set to 0x{0:X}, 0x{1:X}, 0x{2:X} respectively.", (byte)value, (byte)(value >> 8), (byte)(value >> 16));
                 break;
             case Registers.SystemHandlerPriority2:
                 // only 11th is not ignored
-                priorities[(int)(isSecure ? SystemException.SuperVisorCall_S : SystemException.SuperVisorCall)] = (byte)(value >> 24);
+                SetSystemHandlerPriority(isSecure ? SystemException.SuperVisorCall_S : SystemException.SuperVisorCall, (byte)(value >> 24));
                 this.DebugLog("Priority of IRQ 11 set to 0x{0:X}.", (byte)(value >> 24));
                 break;
             case Registers.SystemHandlerPriority3:
-                priorities[(int)(isSecure ? SystemException.PendSV_S : SystemException.PendSV)] = (byte)(value >> 16);
-                priorities[(int)(isSecure ? SystemException.SysTick_S : SystemException.SysTick)] = (byte)(value >> 24);
+                SetSystemHandlerPriority(isSecure ? SystemException.PendSV_S : SystemException.PendSV, (byte)(value >> 16));
+                SetSystemHandlerPriority(isSecure ? SystemException.SysTick_S : SystemException.SysTick, (byte)(value >> 24));
                 this.DebugLog("Priority of IRQs 14, 15 set to 0x{0:X}, 0x{1:X} respectively.", (byte)(value >> 16), (byte)(value >> 24));
                 break;
             case Registers.CoprocessorAccessControl:
@@ -1060,6 +1060,24 @@ namespace Antmicro.Renode.Peripherals.IRQControllers
             maskedInterruptPresent = false;
             prioritizeSecureInterrupts = false;
             pendingIRQs.Clear();
+        }
+
+        // The system handler priority registers (SHPR1-SHPR3) hold priorities in the same
+        // format as the external interrupt priority registers, so the bits left unimplemented
+        // by the platform have to be dropped here too. Firmware discovers how many priority
+        // bits the hardware implements by writing 0xFF to a priority field and reading it
+        // back, and it does so through SHPR2 (SVCall) at least in the FreeRTOS Cortex-M port.
+        private void SetSystemHandlerPriority(SystemException exception, byte value)
+        {
+            var number = (int)exception;
+            if((value & ~priorityMask) != 0)
+            {
+                this.Log(LogLevel.Warning, "Trying to set the priority for interrupt {0} to 0x{1:X}, but it should be maskable with 0x{2:X}",
+                    ExceptionToString(number), value, priorityMask);
+            }
+
+            priorities[number] = (byte)(value & priorityMask);
+            this.DebugLog("Priority 0x{0:X} set for interrupt {1}.", priorities[number], ExceptionToString(number));
         }
 
         private void HandlePriorityWrite(long offset, bool externalInterrupt, uint value, bool isSecure)
