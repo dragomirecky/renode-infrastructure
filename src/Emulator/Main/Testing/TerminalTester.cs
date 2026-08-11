@@ -282,28 +282,28 @@ namespace Antmicro.Renode.Testing
             {
                 lines.Clear();
                 report.Unload();
-                generatedReport = null;
             }
         }
 
+        // Reads the accumulated report without consuming it, so that every call reflects
+        // everything reported so far. The buffer notes are rendered from the live buffers
+        // on each call for the same reason - `TryDump` only peeks, so appending them to
+        // `report` instead would repeat them once per call.
         public string GetReport()
         {
-            if(generatedReport == null)
+            var result = new StringBuilder(report.ToString());
+
+            if(sgrDecodingBuffer.TryDump(out var sgr))
             {
-                if(sgrDecodingBuffer.TryDump(out var sgr))
-                {
-                    report.AppendFormat("--- SGR decoding buffer contains {0} characters: >>{1}<<\n", sgr.Length, sgr);
-                }
-
-                if(currentLineBuffer.TryDump(out var line))
-                {
-                    report.AppendFormat("--- Current line buffer contains {0} characters: >>{1}<<\n", line.Length, line);
-                }
-
-                generatedReport = report.Unload();
+                result.AppendFormat("--- SGR decoding buffer contains {0} characters: >>{1}<<\n", sgr.Length, sgr);
             }
 
-            return generatedReport;
+            if(currentLineBuffer.TryDump(out var line))
+            {
+                result.AppendFormat("--- Current line buffer contains {0} characters: >>{1}<<\n", line.Length, line);
+            }
+
+            return result.ToString();
         }
 
         public void RegisterFailingString(string pattern, bool treatAsRegex)
@@ -746,7 +746,6 @@ namespace Antmicro.Renode.Testing
         private bool pauseEmulation;
         private TerminalTesterResult testerResult;
         private bool delayedCharInProgress;
-        private string generatedReport;
         private SGRDecodingState sgrDecodingState;
 
         private IMachine machine;
