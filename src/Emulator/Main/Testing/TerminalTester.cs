@@ -480,6 +480,13 @@ namespace Antmicro.Renode.Testing
             // If we had timeout=0 and there was no immediate match, fail immediately
             else if(timeout == TimeInterval.Empty)
             {
+                lock(lines)
+                {
+                    // Clear the saved matcher, the same way the timeout path below does: left
+                    // armed, it would keep matching in WriteChar long after this call returned
+                    // and destructively consume a line a later assertion is waiting for.
+                    this.resultMatcher = null;
+                }
                 return null;
             }
 
