@@ -42,8 +42,15 @@ namespace Antmicro.Renode.Time
             var hours = m.Groups["hours"].Success ? ulong.Parse(m.Groups["hours"].Value) : 0;
             var minutes = m.Groups["minutes"].Success ? ulong.Parse(m.Groups["minutes"].Value) : 0;
             var seconds = ulong.Parse(m.Groups["seconds"].Value);
-            // For convenience we parse "decimals" as fraction of a second, and so we multiply this by the number of ticks in a second
-            var decimals = m.Groups["decimals"].Success ? (ulong)(double.Parse($"0{m.Groups["decimals"].Value}", CultureInfo.InvariantCulture) * TicksPerSecond) : 0;
+            // For convenience we parse "decimals" as fraction of a second, and so we multiply this by the number of ticks in a second.
+            // The fraction is parsed as `decimal` rather than `double` so that `TryParse` is the exact inverse of `ToString`, which
+            // renders it as exactly nine decimal digits - one per tick. A `double` cannot hold such a fraction exactly: 0.004095 is
+            // representable only as a value a hair below it, and multiplying that by `TicksPerSecond` yields 4094999.9999999995,
+            // which the truncating cast turned into a duration one whole tick short. A fraction finer than a tick is not
+            // representable at all, so it is rounded to the nearest one instead of being truncated towards zero.
+            var decimals = m.Groups["decimals"].Success
+                ? (ulong)decimal.Round(decimal.Parse($"0{m.Groups["decimals"].Value}", CultureInfo.InvariantCulture) * TicksPerSecond, MidpointRounding.ToEven)
+                : 0;
 
             ulong ticks = 0;
             ticks += decimals;
