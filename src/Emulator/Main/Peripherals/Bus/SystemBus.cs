@@ -2493,6 +2493,11 @@ namespace Antmicro.Renode.Peripherals.Bus
         private readonly List<BinaryFingerprint> binaryFingerprints;
 
         private readonly LRUCache<Tuple<ICPU, ulong>, Tuple<string, Symbol>> pcCache = new LRUCache<Tuple<ICPU, ulong>, Tuple<string, Symbol>>(10000);
+        // Reconstructed rather than serialized - see the note on `PeripheralCollection.sync`. This lock
+        // is the same hazard one field away: `TryFindCurrentThreadCPUAndId` takes it for reading on the
+        // bus-access path while CPU registration takes it for writing, so it is every bit as
+        // contendable, and once contended it too would carry an `EventWaitHandle` into the graph.
+        [Constructor(LockRecursionPolicy.SupportsRecursion)]
         private readonly ReaderWriterLockSlim cpuSync;
         private readonly Dictionary<ulong, List<BusHookHandler>> hooksOnRead;
         private readonly Dictionary<int, ICPU> cpuById;

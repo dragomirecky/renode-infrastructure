@@ -379,6 +379,13 @@ namespace Antmicro.Renode.Peripherals.Bus
             private Block[] blocks;
             [Constructor]
             private ThreadLocal<Block> lastBlockStorage;
+            // Reconstructed rather than serialized, for the same reason `lastBlockStorage` above is:
+            // Migrant refuses the `IntPtr` inside it. A `ReaderWriterLockSlim` only reaches one once
+            // it has had to make a thread wait - it creates its `EventWaitHandle`s lazily - so unlike
+            // a `ThreadLocal`, which is refused unconditionally, this field broke serialization only
+            // intermittently, on whichever runs had contended the lock. Nothing about a lock's runtime
+            // state is worth restoring anyway: a deserialized emulation holds none of its own locks.
+            [Constructor(LockRecursionPolicy.SupportsRecursion)]
             private readonly ReaderWriterLockSlim sync;
             private readonly SystemBus sysbus;
 
