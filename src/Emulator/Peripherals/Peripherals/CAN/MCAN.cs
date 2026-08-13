@@ -759,6 +759,19 @@ namespace Antmicro.Renode.Peripherals.CAN
 
         private void HandleTxEvent(TxBufferElementHeader txHeader)
         {
+            // EFC, bit 23 of the transmitted Tx buffer element's T1, decides whether this
+            // transmission produces a Tx event at all: "0: Do not store Tx events,
+            // 1: Store Tx events". Software that wants an event on selected frames only --
+            // a time-synchronisation master reading back the transmission timestamp of its
+            // own sync frame, for instance -- sets it per buffer, and storing an event for
+            // every frame both fills the FIFO with elements the driver never asked for and
+            // delays the ones it did: TEFN is a latch, and a driver that reads one element
+            // per interrupt drains a burst no faster than one element per interrupt.
+            if(!txHeader.EventFIFOControl)
+            {
+                return;
+            }
+
             if(rv.CCControlRegister.ControlFields[(int)Control.WideMessageMarker].Value)
             {
                 this.Log(LogLevel.Warning, "Wide Message Marker requires an external Time Stamping Unit (TSU) that is not available");
