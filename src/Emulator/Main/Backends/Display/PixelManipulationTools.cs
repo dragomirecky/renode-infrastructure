@@ -362,7 +362,10 @@ namespace Antmicro.Renode.Backends.Display
         {
             if(swap)
             {
-                f = (a, b) => f(a, b).RedBlueSwapped;
+                // Wrap a copy: a lambda assigned to `f` while capturing `f` captures
+                // the variable, not the value, and calls itself until the stack dies.
+                var plain = f;
+                f = (a, b) => plain(a, b).RedBlueSwapped;
             }
             if(endianess == Endianess.BigEndian)
             {
@@ -375,7 +378,8 @@ namespace Antmicro.Renode.Backends.Display
         {
             if(swap)
             {
-                f = (a, b, c) => f(a, b, c).RedBlueSwapped;
+                var plain = f;
+                f = (a, b, c) => plain(a, b, c).RedBlueSwapped;
             }
             if(endianess == Endianess.BigEndian)
             {
@@ -388,7 +392,8 @@ namespace Antmicro.Renode.Backends.Display
         {
             if(swap)
             {
-                f = (a, b, c, d) => f(a, b, c, d).RedBlueSwapped;
+                var plain = f;
+                f = (a, b, c, d) => plain(a, b, c, d).RedBlueSwapped;
             }
             if(endianess == Endianess.BigEndian)
             {
@@ -431,7 +436,8 @@ namespace Antmicro.Renode.Backends.Display
         {
             if(swap)
             {
-                f = p => f(p.RedBlueSwapped);
+                var plain = f;
+                f = p => plain(p.RedBlueSwapped);
             }
             if(endianess == Endianess.BigEndian)
             {
@@ -454,7 +460,8 @@ namespace Antmicro.Renode.Backends.Display
         {
             if(swap)
             {
-                f = p => f(p.RedBlueSwapped);
+                var plain = f;
+                f = p => plain(p.RedBlueSwapped);
             }
             if(endianess == Endianess.BigEndian)
             {
@@ -479,7 +486,8 @@ namespace Antmicro.Renode.Backends.Display
         {
             if(swap)
             {
-                f = p => f(p.RedBlueSwapped);
+                var plain = f;
+                f = p => plain(p.RedBlueSwapped);
             }
             if(endianess == Endianess.BigEndian)
             {
