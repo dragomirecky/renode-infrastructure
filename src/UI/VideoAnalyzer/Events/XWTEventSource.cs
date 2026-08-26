@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 
 using Antmicro.Renode.Extensions.Analyzers.Video.Handlers;
 using Antmicro.Renode.Logging;
+using Antmicro.Renode.Peripherals.Input;
 
 using Xwt;
 
@@ -61,9 +62,7 @@ namespace Antmicro.Renode.Extensions.Analyzers.Video.Events
             var vsc = MapVirtualKeyEx((uint)vks & 0xff, MAPVK_VK_TO_VSC, keyboardLayout);
             var key = WPFToKeyScanCodeConverter.Instance.GetScanCode((int)vsc, e.Key);
 #else
-            var entryKey = Gdk.Keymap.Default.GetEntriesForKeyval((uint)e.Key)[0].Keycode;
-
-            var key = X11ToKeyScanCodeConverter.Instance.GetScanCode((int)entryKey);
+            var key = GetScanCodeForKeyval((uint)e.Key);
 #endif // !PLATFORM_WINDOWS
             if(key != null)
             {
@@ -84,9 +83,7 @@ namespace Antmicro.Renode.Extensions.Analyzers.Video.Events
             var vsc = MapVirtualKeyEx((uint)vks & 0xff, MAPVK_VK_TO_VSC, keyboardLayout);
             var key = WPFToKeyScanCodeConverter.Instance.GetScanCode((int)vsc, e.Key);
 #else
-            var entryKey = Gdk.Keymap.Default.GetEntriesForKeyval((uint)e.Key)[0].Keycode;
-
-            var key = X11ToKeyScanCodeConverter.Instance.GetScanCode((int)entryKey);
+            var key = GetScanCodeForKeyval((uint)e.Key);
 #endif // !PLATFORM_WINDOWS
             if(key != null)
             {
@@ -96,6 +93,30 @@ namespace Antmicro.Renode.Extensions.Analyzers.Video.Events
 #endif // !GUI_DISABLED
             Logger.LogAs(this, LogLevel.Warning, "Unhandled keycode: {0}", e.Key);
         }
+
+#if !GUI_DISABLED && !PLATFORM_WINDOWS
+        // The GDK keymap reports the platform's hardware keycodes: X11 keycodes on
+        // Linux, Carbon virtual keycodes (kVK_*) on macOS — each needs its own table.
+        // Keyvals the keymap cannot resolve to a keycode (on quartz that is every
+        // non-character key: arrows, navigation, function keys) fall back to the
+        // layout-independent GDK keyval table.
+        private static KeyScanCode? GetScanCodeForKeyval(uint keyval)
+        {
+            var entries = Gdk.Keymap.Default.GetEntriesForKeyval(keyval);
+            if(entries.Length > 0)
+            {
+                var keycode = (int)entries[0].Keycode;
+                var scanCode = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                    ? MacosToKeyScanCodeConverter.Instance.GetScanCode(keycode)
+                    : X11ToKeyScanCodeConverter.Instance.GetScanCode(keycode);
+                if(scanCode != null)
+                {
+                    return scanCode;
+                }
+            }
+            return GdkKeyvalToKeyScanCodeConverter.Instance.GetScanCode(keyval);
+        }
+#endif
 
         private void HandleButtonReleased(object sender, ButtonEventArgs e)
         {
