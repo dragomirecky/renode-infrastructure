@@ -61,6 +61,7 @@ namespace Antmicro.Renode.UI
                 DllMap.Register(assembly);
 
                 Application.Initialize(ToolkitType.Gtk3);
+                MacosForegroundApplication.Ensure();
 #endif
 #endif
                 return true;
