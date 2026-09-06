@@ -129,6 +129,14 @@ namespace Antmicro.Renode.Peripherals.IRQControllers
             }
         }
 
+        public bool IsExceptionEligible(int exception)
+        {
+            lock(irqs)
+            {
+                return ShouldRaiseException(exception);
+            }
+        }
+
         public void SetSevOnPendingOnAllCPUs(bool value)
         {
             foreach(var cpu in machine.SystemBus.GetCPUs().OfType<Arm>())
