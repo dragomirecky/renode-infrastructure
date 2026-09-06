@@ -906,6 +906,12 @@ namespace Antmicro.Renode.Peripherals.CPU
         }
 
         [Export]
+        private int IsPendingIRQEligible(int exception)
+        {
+            return nvic?.IsExceptionEligible(exception) == true ? 1 : 0;
+        }
+
+        [Export]
         private int CustomIdauHandler(IntPtr request, IntPtr region, IntPtr attribution)
         {
             if(idau == null)
