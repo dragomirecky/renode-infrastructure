@@ -49,6 +49,10 @@ namespace Antmicro.Renode.Peripherals.CPU
             isAborted = false;
             Pause();
             EmulationState = EmulationCPUState.InReset;
+            if(TimeHandle != null)
+            {
+                TimeHandle.Enabled = !currentHaltedState;
+            }
         }
 
         public virtual void Dispose()
@@ -78,6 +82,12 @@ namespace Antmicro.Renode.Peripherals.CPU
 
         public ulong Step(int count = 1)
         {
+            if(isAborted)
+            {
+                this.Log(LogLevel.Warning, "Ignoring stepping on an aborted CPU; reset it first");
+                return PC;
+            }
+
             if(IsHalted)
             {
                 this.Log(LogLevel.Warning, "Ignoring stepping on a halted CPU");
@@ -219,7 +229,7 @@ namespace Antmicro.Renode.Peripherals.CPU
                 lock(haltedLock)
                 {
                     timeHandle = value;
-                    timeHandle.Enabled = !currentHaltedState;
+                    timeHandle.Enabled = !currentHaltedState && !isAborted;
                     timeHandle.PauseRequested += RequestPause;
                     timeHandle.StartRequested += StartCPUThreadTimeHandle;
                 }
@@ -390,7 +400,7 @@ namespace Antmicro.Renode.Peripherals.CPU
                 if(TimeHandle != null)
                 {
                     this.Trace();
-                    TimeHandle.DeferredEnabled = !shouldBeHalted;
+                    TimeHandle.DeferredEnabled = !shouldBeHalted && !isAborted;
                 }
             }
 
@@ -816,6 +826,9 @@ namespace Antmicro.Renode.Peripherals.CPU
                     {
                         this.Trace(result.ToString());
                         isAborted = true;
+                        // No CPU thread can accept another grant until reset.
+                        // Disable its time handle at the end of this interval.
+                        TimeHandle.DeferredEnabled = false;
                         break;
                     }
                     else if(result == ExecutionResult.Interrupted || result == ExecutionResult.StoppedAtWatchpoint)
